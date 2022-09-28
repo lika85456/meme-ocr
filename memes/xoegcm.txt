@@ -1,0 +1,3 @@
+Teacher: Time is up
+Students:
+Green: Let us study this matter more.
