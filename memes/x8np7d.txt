@@ -5,9 +5,4 @@ ERROR: Power Supply Unit
 Failure, insufficient
 heat generated to
 vaporize water.
-U
-OO
-ooo
-っつ
-H
 seebangnow

@@ -6,7 +6,6 @@ bark woof woof bark bark bark
 WORLD'S
 GOODEST
 BOY
-EL
 ruff ruff ruff bark bark woof bark
 ruff ruff bark bark wook bark woof
 bark bark ruff ruff ruff
