@@ -1,0 +1,9 @@
+memes
+env
+research
+google_key.json
+.gitignore
+.git/**/*
+.pytest_cache
+coverage
+meme-ocr2

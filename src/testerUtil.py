@@ -1,31 +1,60 @@
 import os
-import cv2
-import json
 from dataclasses import dataclass
+from pickle import dump, load
+import cv2
 from typing import List
-from reader import OCRReader
 from filter import Filter
+from dataset import Dataset
+from reader import OCRReader
 
 
 @dataclass
 class TestSettings:
+    """This class contains all the settings for a test."""
+
     reader: OCRReader
     filters: List[Filter]  # list of filters to apply to image in order
+
+    def __str__(self) -> str:
+        filtersString = ", ".join([str(filter) for filter in self.filters])
+        return f"{self.reader}: {filtersString}"
 
 
 @dataclass
 class SingleTestResult(TestSettings):
+    """This class contains the result of a single test."""
+
     time: float
     success: float
     resultText: str
     expectedText: str
 
-    def toJSON(self):
-        copy = self.__dict__.copy()
-        copy["reader"] = str(copy["reader"])
-        copy["filters"] = [str(filter) for filter in copy["filters"]]
 
-        return json.dumps(copy)
+@dataclass
+class MultiTestResult:
+    results: List[SingleTestResult]
+    testSettings: TestSettings
+
+    totalTime: float = 0
+    totalSuccess: float = 0
+
+    averageTime: float = 0
+    averageSuccess: float = 0
+
+    def __post_init__(self):
+        # calculate average time and success
+        self.totalTime = 0
+        self.totalSuccess = 0
+
+        for result in self.results:
+            self.totalTime += result.time
+            self.totalSuccess += result.success
+
+        self.averageTime = self.totalTime / len(self.results)
+        self.averageSuccess = self.totalSuccess / len(self.results)
+
+    def __str__(self) -> str:
+        return self.testSettings.__str__()
 
 
 class TestCase:
@@ -46,8 +75,8 @@ class TestCase:
         time = cv2.getTickCount()
 
         # apply filters
-        for filter in self.testSettings.filters:
-            image = filter.filter(image)
+        for currentFilter in self.testSettings.filters:
+            image = currentFilter.filter(image)
 
         # read text
         text = self.testSettings.reader.read(image)
@@ -70,12 +99,11 @@ class TestCase:
 
     # compares result to expected text
     # resulting float number is a percentage of how many words both strings have in common
-    def getSuccessRate(self, text: list, expected: list) -> float:
+    def getSuccessRate(self, text: list, expected: str) -> float:
         # make a union of lowercased words and calculate how many of them are in the expected text
         words = set([word.lower() for line in text for word in line.split()])
-        expectedWords = set(
-            [word.lower() for line in expected for word in line.split()]
-        )
+        expectedWords = set([word.lower() for word in expected.split()])
+
         return len(words.intersection(expectedWords)) / len(expectedWords)
 
     def __str__(self):
@@ -88,47 +116,64 @@ class TesterUtil:
     Tester utility for OCR engines with filters and cache their results for better performance.
     """
 
-    def __init__(self, cachePath: str):
+    def __init__(self, cachePath: str, dataset: Dataset):
         self.cachePath = cachePath
         self.cache = {}
         self.loadCache()
+        self.dataset = dataset
 
     def loadCache(self):
         """
         Loads the cache from the cache file.
         """
 
-        # Check if the cache file exists
+        # check if the cache file exists
         if not os.path.exists(self.cachePath):
             return
 
-        # Load the cache
-        with open(self.cachePath, "r") as file:
-            self.cache = json.load(file)
+        # load the cache
+        with open(self.cachePath, "rb") as file:
+            self.cache = load(file)
 
     def saveCache(self):
         """
         This method will save the cache to the cache file.
         """
 
-        # Save the cache
-        with open(self.cachePath, "w") as file:
-            json.dump(self.cache, file)
+        # save the cache
+        with open(self.cachePath, "wb") as file:
+            dump(self.cache, file)
 
-    def test(self, testCase: TestCase, id: str):
+    def test(
+        self, testSettings: TestSettings, memeCount=10, ignoreCache=False
+    ) -> SingleTestResult:
         """
         This method will test a specific test case and return the result.
         """
 
-        # Check if we already have a cached result
-        if id in self.cache:
+        id = str(testSettings)
+
+        # check if we already have a cached result
+        if not ignoreCache and id in self.cache:
             return self.cache[id]
 
-        # Test the OCR engine
-        result = testCase.test()
+        # load first memeCount memes
+        memesDataset = self.dataset.get(memeCount)
 
-        # Cache the result
-        self.cache[id] = result.toJSON()
+        # create a list of test cases
+        testCases = [
+            TestCase(testSettings, meme.imagePath, meme.expectedText)
+            for meme in memesDataset
+        ]
+
+        # run all test cases
+        results = [testCase.test() for testCase in testCases]
+
+        # cache the result
+        self.cache[id] = MultiTestResult(
+            results, testSettings, testSettings.reader, testSettings.filters
+        )
+
         self.saveCache()
 
-        return result
+        return self.cache[id]
