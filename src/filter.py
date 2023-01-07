@@ -1,24 +1,52 @@
+"""module that contains the filters"""
 from abc import abstractclassmethod
-from cv2 import cv2
+
+# pylint: disable=no-name-in-module
+from cv2 import (
+    Mat,
+    cvtColor,
+    COLOR_BGR2GRAY,
+    Canny,
+    RETR_TREE,
+    CHAIN_APPROX_SIMPLE,
+    drawContours,
+    filter2D,
+    threshold,
+    THRESH_BINARY,
+    GaussianBlur,
+    THRESH_TRUNC,
+    bitwise_not,
+    bitwise_and,
+    addWeighted,
+    resize,
+    findContours,
+    dilate,
+)
 import numpy as np
 
 # abstract class for filters
 class Filter:
-    @abstractclassmethod
-    def filter(self, image: cv2.Mat) -> cv2.Mat:
-        """applies a filter on image"""
-        pass
+    """abstract class for filters"""
 
+    # pylint: disable=deprecated-decorator
     @abstractclassmethod
-    def __str__(self):
-        raise NotImplementedError
+    def filter(cls, image: Mat) -> Mat:
+        """applies a filter on image"""
+
+    # pylint: disable=deprecated-decorator
+    @abstractclassmethod
+    def __str__(cls):
+        """returns the name of the filter"""
 
     def __json__(self):
         return str(self)
 
 
 class NoFilter(Filter):
-    def filter(self, image: cv2.Mat) -> cv2.Mat:
+    """filter that does not apply any filter on image;"""
+
+    # pylint: disable=arguments-differ
+    def filter(self, image: Mat) -> Mat:
         """returns image without applying any filter"""
         return NormalizeFilter().filter(image)
 
@@ -27,9 +55,12 @@ class NoFilter(Filter):
 
 
 class GrayscaleFilter(Filter):
-    def filter(self, image: cv2.Mat) -> cv2.Mat:
+    """filter that applies a grayscale filter on image"""
+
+    # pylint: disable=arguments-differ
+    def filter(self, image: Mat) -> Mat:
         """applies a grayscale filter on image"""
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cvtColor(image, COLOR_BGR2GRAY)
         return NormalizeFilter().filter(gray)
 
     def __str__(self) -> str:
@@ -37,14 +68,17 @@ class GrayscaleFilter(Filter):
 
 
 class CannyEdgeFilter(Filter):
-    def filter(self, image: cv2.Mat) -> cv2.Mat:
+    """filter that applies a canny edge filter on image"""
+
+    # pylint: disable=arguments-differ
+    def filter(self, image: Mat) -> Mat:
         """applies a canny edge filter on image"""
         if len(image.shape) > 2:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray = cvtColor(image, COLOR_BGR2GRAY)
         else:
             gray = image
 
-        canny = cv2.Canny(gray, 100, 200)
+        canny = Canny(gray, 100, 200)
 
         return NormalizeFilter().filter(canny)
 
@@ -53,18 +87,20 @@ class CannyEdgeFilter(Filter):
 
 
 class CannyEdgeWithFilledShapesFilter(Filter):
-    def filter(self, image: cv2.Mat) -> cv2.Mat:
+    """filter that applies a canny edge filter and fills the resulting shapes on image"""
+
+    # pylint: disable=arguments-differ
+    def filter(self, image: Mat) -> Mat:
         """applies a canny edge filter with filled shapes on image"""
         if len(image.shape) > 2:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray = cvtColor(image, COLOR_BGR2GRAY)
         else:
             gray = image
 
-        canny = cv2.Canny(gray, 100, 200)
-        contours, hierarchy = cv2.findContours(
-            canny, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
-        )
-        cv2.drawContours(canny, contours, -1, (255, 255, 255), 3)
+        canny = Canny(gray, 100, 200)
+        contours, _ = findContours(canny, RETR_TREE, CHAIN_APPROX_SIMPLE)
+        drawContours(canny, contours, -1, (255, 255, 255), 3)
+
         return NormalizeFilter().filter(canny)
 
     def __str__(self) -> str:
@@ -72,16 +108,19 @@ class CannyEdgeWithFilledShapesFilter(Filter):
 
 
 class SharpenFilter(Filter):
-    def filter(self, image: cv2.Mat) -> cv2.Mat:
+    """filter that applies a sharpen filter on image"""
+
+    # pylint: disable=arguments-differ
+    def filter(self, image: Mat) -> Mat:
         """applies a sharpen filter on image"""
         if len(image.shape) > 2:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray = cvtColor(image, COLOR_BGR2GRAY)
         else:
             gray = image
 
         kernel = np.array([[-1, -1, -1], [-1, 9, -1], [-1, -1, -1]])
 
-        sharpened = cv2.filter2D(gray, -1, kernel)
+        sharpened = filter2D(gray, -1, kernel)
 
         return NormalizeFilter().filter(sharpened)
 
@@ -90,14 +129,17 @@ class SharpenFilter(Filter):
 
 
 class OneBitColorFilter(Filter):
-    def filter(self, image: cv2.Mat) -> cv2.Mat:
+    """filter that applies a one bit color filter on image (binarization)"""
+
+    # pylint: disable=arguments-differ
+    def filter(self, image: Mat) -> Mat:
         """applies a one bit color filter on image"""
         if len(image.shape) > 2:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray = cvtColor(image, COLOR_BGR2GRAY)
         else:
             gray = image
 
-        result = cv2.threshold(gray, 20, 235, cv2.THRESH_BINARY)[1]
+        result = threshold(gray, 20, 235, THRESH_BINARY)[1]
 
         return NormalizeFilter().filter(result)
 
@@ -106,14 +148,17 @@ class OneBitColorFilter(Filter):
 
 
 class GaussianBlurFilter(Filter):
-    def filter(self, image: cv2.Mat) -> cv2.Mat:
+    """filter that applies a gaussian blur filter on image"""
+
+    # pylint: disable=arguments-differ
+    def filter(self, image: Mat) -> Mat:
         """applies a gaussian blur filter on image"""
         if len(image.shape) > 2:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray = cvtColor(image, COLOR_BGR2GRAY)
         else:
             gray = image
 
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        blurred = GaussianBlur(gray, (5, 5), 0)
 
         return NormalizeFilter().filter(blurred)
 
@@ -121,11 +166,11 @@ class GaussianBlurFilter(Filter):
         return "gaussian blur"
 
 
-def detectTextColor(image: cv2.Mat) -> str:
+def detect_text_color(image: Mat) -> str:
     """detects the color of the text in image"""
     # convert image to grayscale if not already
     if len(image.shape) > 2:
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cvtColor(image, COLOR_BGR2GRAY)
     else:
         gray = image
 
@@ -136,31 +181,37 @@ def detectTextColor(image: cv2.Mat) -> str:
     # return color with more pixels
     if light > dark:
         return "light"
-    else:
-        return "dark"
+
+    return "dark"
 
 
 class NormalizeFilter(Filter):
-    def filter(self, image: cv2.Mat) -> cv2.Mat:
-        """normalizes the image to have black text (it's not very good at it though) and also resizes the image up to 600 pixels in width or height"""
+    """filter that normalizes the image to have black text
+    (it's not very good at it though) and also resizes the image
+    up to 600 pixels in width or height"""
+
+    # pylint: disable=arguments-differ
+    def filter(self, image: Mat) -> Mat:
+        """normalizes the image to have black text (it's not very good at it though)
+        and also resizes the image up to 600 pixels in width or height"""
         if len(image.shape) > 2:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            gray = cvtColor(image, COLOR_BGR2GRAY)
         else:
             gray = image
 
         # detect text color
-        color = detectTextColor(gray)
+        color = detect_text_color(gray)
 
         # invert image if text is light
         if color == "light":
-            gray = cv2.bitwise_not(gray)
+            gray = bitwise_not(gray)
 
         if gray.shape[0] > gray.shape[1]:
             scale = 600 / gray.shape[0]
         else:
             scale = 600 / gray.shape[1]
 
-        gray = cv2.resize(gray, (0, 0), fx=scale, fy=scale)
+        gray = resize(gray, (0, 0), fx=scale, fy=scale)
 
         return gray
 
@@ -168,59 +219,48 @@ class NormalizeFilter(Filter):
         return "normalize"
 
 
-def removeIrelevantContent(image: cv2.Mat) -> cv2.Mat:
+def remove_irelevant_content(image: Mat) -> Mat:
+    """removes irelevant content from image"""
 
     # create a blurred canny edge mask
-    irelevantMask = CannyEdgeWithFilledShapesFilter().filter(image)
+    irelevant_mask = CannyEdgeWithFilledShapesFilter().filter(image)
 
-    # blur the mask so we do not lose any important content near the text
-    # irelevantMask = GaussianBlurFilter().filter(irelevantMask)
+    irelevant_mask = bitwise_not(irelevant_mask)
+    irelevant_mask = dilate(irelevant_mask, np.ones((10, 10), np.uint8))
+    irelevant_mask = threshold(irelevant_mask, 250, 255, THRESH_BINARY)[1]
 
-    # invert
-    irelevantMask = cv2.bitwise_not(irelevantMask)
-
-    # create a new mask, that will have pixel as white if they are 5 pixels near full white, else black
-    irelevantMask = cv2.dilate(irelevantMask, np.ones((10, 10), np.uint8))
-
-    # treshold to get a binary mask
-    irelevantMask = cv2.threshold(irelevantMask, 250, 255, cv2.THRESH_BINARY)[1]
-
-    # invert back
-    irelevantMask = cv2.bitwise_not(irelevantMask)
-
-    # invert blurredCanny (white important, black irelevant)
-    blurredCanny = cv2.bitwise_not(irelevantMask)
-
-    # invert image
-    gray = cv2.bitwise_not(image)
-
-    # remove irelevant content from image
-    gray = cv2.bitwise_and(gray, gray, mask=blurredCanny)
-
-    # invert gray
-    gray = cv2.bitwise_not(gray)
+    gray = bitwise_not(image)
+    gray = bitwise_and(gray, gray, mask=irelevant_mask)
+    gray = bitwise_not(gray)
 
     return gray
 
 
 class Custom(Filter):
-    def filter(self, image: cv2.Mat) -> cv2.Mat:
+    """custom filter that removes irelevant content and then applies
+    a sharpen filter and then enhances the sharpened image in the original image.
+    Sadly it doesn't produce very good results
+    """
+
+    # pylint: disable=arguments-differ
+    def filter(self, image: Mat) -> Mat:
         """
-        First step is to remove irelevant image content by masking out everything that is not near edges
+        First step is to remove irelevant image content
+        by masking out everything that is not near edges
         """
 
         gray = GrayscaleFilter().filter(image)
 
-        gray = removeIrelevantContent(gray)
+        gray = remove_irelevant_content(gray)
 
         # remove colors over 245
-        gray = cv2.threshold(gray, 254, 255, cv2.THRESH_TRUNC)[1]
+        gray = threshold(gray, 254, 255, THRESH_TRUNC)[1]
 
         # sharpen
         sharpened = SharpenFilter().filter(gray)
 
         # enhance by 50% in sharpened mask using addWeighted
-        gray = cv2.addWeighted(sharpened, 0.3, gray, 0.7, 0)
+        gray = addWeighted(sharpened, 0.3, gray, 0.7, 0)
 
         return gray
 
